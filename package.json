@@ -1,0 +1,21 @@
+{
+  "name": "gpt-grader",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/openai": "1.0.0-beta.12",
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "openai": "^4.33.0",
+    "uuid": "^9.0.1"
+  }
+}
