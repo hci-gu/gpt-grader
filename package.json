@@ -5,6 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "vite",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,9 +14,28 @@
   "license": "ISC",
   "dependencies": {
     "@azure/openai": "1.0.0-beta.12",
+    "@mantine/charts": "^7.8.1",
+    "@mantine/core": "^7.8.1",
+    "@mantine/dropzone": "^7.8.1",
+    "@mantine/hooks": "^7.8.1",
+    "@tabler/icons-react": "^3.2.0",
     "axios": "^1.6.8",
+    "csv-parser": "^3.0.0",
     "dotenv": "^16.4.5",
+    "jotai": "^2.8.0",
     "openai": "^4.33.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "2",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "plugin-debug-label": "link:jotai/babel/plugin-debug-label",
+    "plugin-react-refresh": "link:jotai/babel/plugin-react-refresh",
+    "postcss": "^8.4.38",
+    "postcss-preset-mantine": "^1.14.4",
+    "postcss-simple-vars": "^7.0.1",
+    "vite": "^5.2.10"
   }
 }
