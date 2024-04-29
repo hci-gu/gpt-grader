@@ -18,7 +18,7 @@ const readJSON = (file) => {
   })
 }
 
-export const runsAtom = unwrap(
+export const matchupsAtom = unwrap(
   atom(async (get) => {
     const files = get(filesAtom)
 
@@ -51,7 +51,11 @@ export const runsAtom = unwrap(
         }
 
         const path = file.path.split('/')[3]
-        if (!modelPaths.includes(path) && !path.includes('.json')) {
+        if (
+          !modelPaths.includes(path) &&
+          !path.includes('.json') &&
+          !path.includes('.txt')
+        ) {
           modelPaths.push(path)
         }
       }
@@ -97,18 +101,70 @@ export const runsAtom = unwrap(
   })
 )
 
-// export const run = atom((get) => {
-//   const files = get(filesAtom)
+export const gradesAtom = unwrap(
+  atom(async (get) => {
+    const files = get(filesAtom)
 
-//   let paths = []
-//   for (const file of files) {
-//     // take first part of path
-//     const path = file.path.split('/')[2]
-//     // if path is not already in paths
-//     if (!paths.includes(path)) {
-//       paths.push(path)
-//     }
-//   }
+    let paths = []
+    for (const file of files) {
+      // take first part of path
+      // console.log(file)
+      const path = file.path.split('/')[2]
+      // if path is not already in paths
+      if (!paths.includes(path)) {
+        paths.push(path)
+      }
+    }
 
-//   return Math.random()
-// })
+    const runs = []
+    for (const path of paths) {
+      const run = {
+        name: path,
+      }
+
+      const modelPaths = []
+      for (const file of files.filter((file) => file.path.includes(path))) {
+        if (file.name === 'users.json') {
+          run.users = await readJSON(file)
+          continue
+        }
+        if (file.name === 'evaluation.json') {
+          run.evaluation = await readJSON(file)
+          continue
+        }
+
+        const path = file.path.split('/')[3]
+        if (
+          !modelPaths.includes(path) &&
+          !path.includes('.json') &&
+          !path.includes('.txt')
+        ) {
+          modelPaths.push(path)
+        }
+      }
+
+      const models = []
+      for (const modelPath of modelPaths) {
+        const model = {
+          name: modelPath,
+        }
+
+        // for (const file of files.filter((file) =>
+        //   file.path.includes(`${path}/${modelPath}`)
+        // )) {
+        //   const user = await readJSON(file)
+        //   const name = file.name.split('.')[0]
+
+        // }
+
+        models.push(model)
+      }
+
+      run.models = models
+
+      runs.push(run)
+    }
+
+    return runs
+  })
+)

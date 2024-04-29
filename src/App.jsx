@@ -1,21 +1,12 @@
 import React from 'react'
-import {
-  AppShell,
-  Burger,
-  Divider,
-  Flex,
-  Group,
-  Space,
-  Table,
-  Text,
-  rem,
-} from '@mantine/core'
+import { AppShell, Flex, Group, Text, rem } from '@mantine/core'
 import { IconUpload, IconFile, IconX } from '@tabler/icons-react'
 
 import { Dropzone } from '@mantine/dropzone'
-
-import { useAtomValue, useSetAtom } from 'jotai'
-import { filesAtom, runsAtom } from './state'
+import { useSetAtom } from 'jotai'
+import { filesAtom } from './state'
+import Matchups from './Matchups'
+import Grades from './Grades'
 
 const FileUpload = () => {
   const setFiles = useSetAtom(filesAtom)
@@ -77,96 +68,6 @@ const FileUpload = () => {
   )
 }
 
-const winnerForMatchup = (model, uid1, uid2) => {
-  return
-}
-
-const Run = ({ run }) => {
-  console.log('RUN', run)
-  // const rows = run.models.map((model) => {
-
-  // })
-
-  return (
-    <Flex direction="column">
-      <Text size="xl" weight={700} mt="lg">
-        {run.name}
-      </Text>
-      <Table striped withColumnBorders>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>ID</Table.Th>
-            <Table.Th>Grade</Table.Th>
-            {run.models.map((model) => (
-              <Table.Th key={model.name}>{model.name}</Table.Th>
-            ))}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {run.users.map((user) => (
-            <Table.Tr key={user.id}>
-              <Table.Td>{user.id}</Table.Td>
-              <Table.Td>{user.avgGrade}</Table.Td>
-              {run.models.map((model) => {
-                if (!run.evaluation[model.name]) return <Table.Td>-</Table.Td>
-                const { grade } = run.evaluation[model.name].users.find(
-                  (u) => u.id === user.id
-                )
-                return <Table.Td>{grade}</Table.Td>
-              })}
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-      <Text size="xl" weight={700} mt="lg">
-        Matchups
-      </Text>
-      {run.models.map((model) => (
-        <>
-          <Text size="xl" weight={700} mt="lg">
-            {model.name}
-          </Text>
-          <Table striped withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                {run.users.map((user, i) => (
-                  <Table.Th key={user.id}>{i + 1}</Table.Th>
-                ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {run.users.map((user, i) => (
-                <Table.Tr key={user.id}>
-                  <Table.Td>{i}</Table.Td>
-                  {run.users.map((user2, j) => (
-                    <Table.Td key={user2.id}>{i === j ? '-' : 'X'}</Table.Td>
-                  ))}
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </>
-      ))}
-    </Flex>
-  )
-}
-
-const Runs = () => {
-  const runs = useAtomValue(runsAtom)
-
-  return (
-    <Flex direction="column">
-      {runs?.map((run) => (
-        <>
-          <Run key={run.name} run={run} />
-          <Space h={25} />
-          <Divider />
-        </>
-      ))}
-    </Flex>
-  )
-}
-
 const App = () => {
   return (
     <AppShell header={{ height: 50 }} padding="md">
@@ -177,7 +78,8 @@ const App = () => {
       </AppShell.Header>
       <AppShell.Main>
         <FileUpload />
-        <Runs />
+        <Grades />
+        {/* <Matchups /> */}
       </AppShell.Main>
     </AppShell>
   )
