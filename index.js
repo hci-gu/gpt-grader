@@ -66,7 +66,7 @@ async function createRun(
     fs.writeFileSync(`${path}/prompt.txt`, prompt)
   }
   if (!fs.existsSync(`${path}/settings.json`)) {
-    fs.writeFileSync(`${path}/settings.json`, settings)
+    fs.writeFileSync(`${path}/settings.json`, JSON.stringify(settings, null, 2))
   }
   if (!fs.existsSync(`${path}/exampleMessages.json`)) {
     fs.writeFileSync(
