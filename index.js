@@ -6,11 +6,15 @@ import fs from 'fs'
 import {
   exampleMessages,
   exampleMessagesGradingInstruction,
+  exampleMessagesNumericalEng,
+  exampleMessagesNumericalGradeSWE,
+  exampleMessagesShortAnswer,
   getGradeInstruction,
   gradingInstructionSWE,
   gradingInstructionSWEShorter,
   gradingInstructionSimple,
   gradingInstructionSimpleNumerical,
+  gradingInstructionsEng,
 } from './lib/prompt.js'
 import { getClient } from './lib/client.js'
 import { readData } from './lib/readData.js'
@@ -43,7 +47,14 @@ import { pathForRun } from './lib/utils.js'
 // let runs = 0
 // let requests = []
 
-async function createRun(name, numUsers, type, prompt) {
+async function createRun(
+  name,
+  numUsers,
+  type,
+  prompt,
+  exampleMessages = [],
+  settings = {}
+) {
   const users = await readData(numUsers)
 
   const path = `./data/runs/${type}/${name}`
@@ -53,6 +64,15 @@ async function createRun(name, numUsers, type, prompt) {
   }
   if (!fs.existsSync(`${path}/prompt.txt`)) {
     fs.writeFileSync(`${path}/prompt.txt`, prompt)
+  }
+  if (!fs.existsSync(`${path}/settings.json`)) {
+    fs.writeFileSync(`${path}/settings.json`, settings)
+  }
+  if (!fs.existsSync(`${path}/exampleMessages.json`)) {
+    fs.writeFileSync(
+      `${path}/exampleMessages.json`,
+      JSON.stringify(exampleMessages, null, 2)
+    )
   }
 
   if (type === 'matchup') {
@@ -194,36 +214,59 @@ const fixErrors = async (run) => {
   }
 }
 
-async function main() {
-  const run = await createRun(
-    'run-with-25-users-swedish-instruction-0.5-temp',
-    25,
-    'simple',
-    // gradingInstructionSimpleNumerical
-    `
-    You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-    ## Always end your response with a grade from 0 to 5.
-
-    ## Grading Instructions
-    ${gradingInstructionSWE}`
-  )
-  const model = 'llama-3-70b'
-  const runs = 5
-
-  // for (let i = 0; i < runs; i++) {
-  //   const modelRunName = `${model}_${i + 1}`
-  //   if (run.type === 'matchup') {
-  //     await gradeMatchups(run, modelRunName)
-  //     await getIntentOfMatchups(run, modelRunName)
-  //     await getRatingsForMatchups(run, modelRunName)
-  //   } else {
-  //     await gradeRun(run, modelRunName)
-  //   }
-  // }
+const runAndEvaluate = async (run, model, runs = 3) => {
+  for (let i = 0; i < runs; i++) {
+    const modelRunName = `${model}_${i + 1}`
+    if (run.type === 'matchup') {
+      await gradeMatchups(run, modelRunName)
+      await getIntentOfMatchups(run, modelRunName)
+      await getRatingsForMatchups(run, modelRunName)
+    } else {
+      await gradeRun(run, modelRunName)
+    }
+  }
 
   await evaluateRun(run)
+}
 
-  // await fixErrors(run)
+async function main() {
+  const temperatures = [0.6, 0.7, 0.8]
+
+  for (let temperature of temperatures) {
+    const run1 = await createRun(
+      `run-with-25-users-english-instruction-just-grade-temp-${temperature}`,
+      25,
+      'simple',
+      `
+  You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
+  ## Only respond with a grade from 0 to 5.
+  
+  ## Grading Instructions
+  ${gradingInstructionsEng}`,
+      exampleMessagesShortAnswer,
+      { temperature }
+    )
+
+    await runAndEvaluate(run1, 'llama-3-70b', 3)
+    await fixErrors(run1)
+
+    const run2 = await createRun(
+      `run-with-25-users-english-instruction-temp-${temperature}`,
+      25,
+      'simple',
+      `
+  You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
+  ## Always end your response with a grade from 0 to 5.
+  
+  ## Grading Instructions
+  ${gradingInstructionsEng}`,
+      exampleMessagesNumericalEng,
+      { temperature }
+    )
+
+    await runAndEvaluate(run2, 'llama-3-70b', 3)
+    await fixErrors(run2)
+  }
 }
 
 main()
