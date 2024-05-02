@@ -1,7 +1,16 @@
-import React from 'react'
-import { Divider, Flex, Space, Table, Text } from '@mantine/core'
+import React, { useState } from 'react'
+import {
+  Divider,
+  Drawer,
+  Flex,
+  MultiSelect,
+  Space,
+  Table,
+  Text,
+} from '@mantine/core'
 import { useAtomValue } from 'jotai'
 import { gradesAtom, matchupsAtom } from './state'
+import { useDisclosure } from '@mantine/hooks'
 
 function getColor(value) {
   if (value < 0 || value > 5) {
@@ -30,10 +39,9 @@ const colorForGrade = (grade, compareGrade) => {
   return getColor(diff)
 }
 
-const Run = ({ run }) => {
+const Run = ({ run, onGradeClick }) => {
   const users = run.users.sort((a, b) => a.avgGrade - b.avgGrade)
   const models = run.models.sort((a, b) => a.name.localeCompare(b.name))
-  console.log(models)
 
   return (
     <Flex direction="column">
@@ -54,7 +62,9 @@ const Run = ({ run }) => {
             <Table.Td>Average error</Table.Td>
             {models.map((model) => (
               <Table.Td key={model.name}>
-                {run.evaluation[model.name].averageError}
+                {run.evaluation && run.evaluation[model.name]
+                  ? run.evaluation[model.name].averageError
+                  : '-'}
               </Table.Td>
             ))}
           </Table.Tr>
@@ -62,7 +72,9 @@ const Run = ({ run }) => {
             <Table.Td>Variance</Table.Td>
             {models.map((model) => (
               <Table.Td key={model.name}>
-                {run.evaluation[model.name].variance.toFixed(2)}
+                {run.evaluation && run.evaluation[model.name]
+                  ? run.evaluation[model.name].variance?.toFixed(2)
+                  : '-'}
               </Table.Td>
             ))}
           </Table.Tr>
@@ -89,12 +101,20 @@ const Run = ({ run }) => {
               <Table.Td>{user.avgGrade}</Table.Td>
               {models.map((model) => {
                 if (!run.evaluation[model.name]) return <Table.Td>-</Table.Td>
-                const { grade } = run.evaluation[model.name].users.find(
+                const evaluation = run.evaluation[model.name].users.find(
                   (u) => u.id === user.id
                 )
                 return (
-                  <Table.Td bg={colorForGrade(grade, user.avgGrade)}>
-                    {grade}
+                  <Table.Td
+                    bg={colorForGrade(evaluation.grade, user.avgGrade)}
+                    onClick={() => {
+                      onGradeClick({
+                        user,
+                        evaluation,
+                      })
+                    }}
+                  >
+                    {evaluation.grade}
                   </Table.Td>
                 )
               })}
@@ -108,12 +128,51 @@ const Run = ({ run }) => {
 
 const Grades = () => {
   const runs = useAtomValue(gradesAtom)
+  const runNames = runs?.map((run) => run.name)
+  const [selectedRuns, setSelectedRuns] = useState([])
+  const [drawerOpen, { open, close }] = useDisclosure(false)
+  const [grade, setGrade] = useState({ user: null, evaluation: null })
+
+  const runsToDisplay =
+    selectedRuns.length == 0
+      ? runs
+      : runs?.filter((run) => selectedRuns.includes(run.name))
 
   return (
     <Flex direction="column">
-      {runs?.map((run) => (
+      <MultiSelect
+        label="Filter runs"
+        placeholder="Choose runs to display"
+        data={runNames}
+        value={selectedRuns}
+        onChange={(value) => {
+          setSelectedRuns(value)
+        }}
+        searchable
+      />
+      <Drawer opened={drawerOpen} onClose={close} title="Grade">
+        <Text size="xl" weight={700}>
+          {grade.user?.id}
+        </Text>
+        <Text size="lg" weight={700}>
+          {grade.evaluation?.grade}
+        </Text>
+        <Space h={10} />
+        <Text size="sm" weight={700}>
+          Text response
+        </Text>
+        <Text size="sm">{grade.evaluation?.textResponse}</Text>
+      </Drawer>
+      {runsToDisplay?.map((run) => (
         <>
-          <Run key={run.name} run={run} />
+          <Run
+            key={run.name}
+            run={run}
+            onGradeClick={(payload) => {
+              setGrade(payload)
+              open()
+            }}
+          />
           <Space h={25} />
           <Divider />
         </>
