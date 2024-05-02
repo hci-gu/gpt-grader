@@ -148,6 +148,7 @@ async function evaluateRun(run) {
       for (let user of users) {
         const fileName = `${runPath}/${model}/${user.id}.json`
         const response = JSON.parse(fs.readFileSync(fileName))
+        user.textResponse = response.choices[0].message.content
         user.grade = extractGrade(response)
         user.error = Math.abs(user.avgGrade - user.grade)
       }
@@ -166,6 +167,7 @@ async function evaluateRun(run) {
           grade: u.grade,
           avgGrade: u.avgGrade,
           error: u.error,
+          textResponse: u.textResponse,
         })),
         averageError:
           users.reduce((acc, curr) => acc + curr.error, 0) / users.length,
@@ -231,89 +233,21 @@ const runAndEvaluate = async (run, model, runs = 3) => {
 }
 
 async function main() {
-  const temperatures = [0.5, 0.6, 0.7, 0.8, 0.9]
+  const run = await createRun(
+    `swedish-text-run-with-25-users-swedish-instruction-temp-0.7`,
+    25,
+    'simple',
+    `
+  You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
+  ## Always end your response with a grade from 0 to 5.
 
-  for (let temperature of temperatures) {
-    const run1 = await createRun(
-      `run-with-25-users-swedish-instruction-just-grade-temp-${temperature}`,
-      25,
-      'simple',
-      `
-You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-## Only respond with a grade from 0 to 5.
+  ${gradingInstructionSWEShorter}`,
+    exampleMessagesNumericalEngWithSwedishResponse,
+    { temperature: 0.7 }
+  )
 
-${gradingInstructionSWEShorter}`,
-      exampleMessagesShortAnswer,
-      { temperature }
-    )
-
-    await runAndEvaluate(run1, 'llama-3-70b', 3)
-    await fixErrors(run1)
-
-    const run2 = await createRun(
-      `run-with-25-users-swedish-instruction-temp-${temperature}`,
-      25,
-      'simple',
-      `
-You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-## Always end your response with a grade from 0 to 5.
-
-${gradingInstructionSWEShorter}`,
-      exampleMessagesNumericalEngWithSwedishResponse,
-      { temperature }
-    )
-
-    await runAndEvaluate(run2, 'llama-3-70b', 3)
-    await fixErrors(run2)
-
-    const run3 = await createRun(
-      `run-with-25-users-swedish-instruction-no-examples-temp-${temperature}`,
-      25,
-      'simple',
-      `
-You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-## Always end your response with a grade from 0 to 5.
-
-${gradingInstructionSWEShorter}`,
-      [],
-      { temperature }
-    )
-
-    await runAndEvaluate(run3, 'llama-3-70b', 3)
-    await fixErrors(run3)
-
-    const run4 = await createRun(
-      `run-with-25-users-swedish-instruction-example-in-prompt-temp-${temperature}`,
-      25,
-      'simple',
-      `
-You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-## Always end your response with a grade from 0 to 5.
-
-${gradingInstructionSWE}`,
-      [],
-      { temperature }
-    )
-
-    await runAndEvaluate(run4, 'llama-3-70b', 3)
-    await fixErrors(run4)
-
-    const run5 = await createRun(
-      `run-with-25-users-swedish-instruction-example-in-prompt-and-messages-temp-${temperature}`,
-      25,
-      'simple',
-      `
-You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-## Always end your response with a grade from 0 to 5.
-
-${gradingInstructionSWE}`,
-      exampleMessagesNumericalEngWithSwedishResponse,
-      { temperature }
-    )
-
-    await runAndEvaluate(run5, 'llama-3-70b', 3)
-    await fixErrors(run5)
-  }
+  await runAndEvaluate(run, 'azure-gpt-4-turbo', 3)
+  await fixErrors(run)
 }
 
 main()
