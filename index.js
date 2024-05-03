@@ -82,10 +82,13 @@ async function createRun(
       for (let j = i + 1; j < users.length; j++) {
         const user1 = users[i]
         const user2 = users[j]
+        const text1User = Math.random() > 0.5 ? user1 : user2
+        const text2User = text1User === user1 ? user2 : user1
 
         matchups.push({
           id: uuid(),
-          users: [user1.id, user2.id],
+          text1: text1User.id,
+          text2: text2User.id,
         })
       }
     }
@@ -114,16 +117,9 @@ async function evaluateRun(run) {
     for (let i = 0; i < models.length; i++) {
       const model = models[i]
 
-      const users = JSON.parse(
-        fs.readFileSync(`${runPath}/${model}/users.json`)
-      )
+      const users = JSON.parse(fs.readFileSync(`${runPath}/users.json`))
       // sort users by rating
       users.sort((a, b) => a.rating - b.rating)
-      // remap to new grade (from 0 to 5 ) based on number of users and their rating
-      users.forEach((user, index) => {
-        user.grade = (index / users.length) * 5
-        user.error = Math.abs(user.avgGrade - user.grade)
-      })
 
       const averageError =
         users.reduce((acc, curr) => acc + curr.error, 0) / users.length
@@ -218,13 +214,11 @@ const fixErrors = async (run) => {
 }
 
 const runAndEvaluate = async (run, model, runs = 3) => {
-  for (let i = 0; i < runs; i++) {
-    const modelRunName = `${model}_${i + 1}`
-    if (run.type === 'matchup') {
-      await gradeMatchups(run, modelRunName)
-      await getIntentOfMatchups(run, modelRunName)
-      await getRatingsForMatchups(run, modelRunName)
-    } else {
+  if (run.type === 'matchup') {
+    await gradeMatchups(run, model)
+  } else {
+    for (let i = 0; i < runs; i++) {
+      const modelRunName = `${model}_${i + 1}`
       await gradeRun(run, modelRunName)
     }
   }
@@ -234,19 +228,19 @@ const runAndEvaluate = async (run, model, runs = 3) => {
 
 async function main() {
   const run = await createRun(
-    `swedish-text-run-with-25-users-swedish-instruction-temp-0.7`,
+    `run-with-25-users-swedish-instruction-temp-0.7`,
     25,
-    'simple',
+    'matchup',
     `
-  You are a teacher grading essays, you will be given an essay and you have to grade it on a scale from 0 to 5.
-  ## Always end your response with a grade from 0 to 5.
+You are a teacher grading essays, you will be given two essays and your job is to decide which is better based on a grading criteria.
+## Always end your response with which text you think is better, "decision: Text X".
 
   ${gradingInstructionSWEShorter}`,
-    exampleMessagesNumericalEngWithSwedishResponse,
+    exampleMessages,
     { temperature: 0.7 }
   )
 
-  await runAndEvaluate(run, 'azure-gpt-4-turbo', 3)
+  await runAndEvaluate(run, 'random', 3)
   await fixErrors(run)
 }
 
