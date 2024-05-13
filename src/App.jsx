@@ -78,8 +78,8 @@ const App = () => {
       </AppShell.Header>
       <AppShell.Main>
         <FileUpload />
-        <Grades />
-        {/* <Matchups /> */}
+        {/* <Grades /> */}
+        <Matchups />
       </AppShell.Main>
     </AppShell>
   )

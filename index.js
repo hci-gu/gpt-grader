@@ -19,7 +19,11 @@ import {
 } from './lib/prompt.js'
 import { getClient } from './lib/client.js'
 import { readData } from './lib/readData.js'
-import { calculateRating, getRatingsForMatchups } from './lib/rating.js'
+import {
+  calculateRating,
+  getRatingsForCompareMatchup,
+  getRatingsForMatchups,
+} from './lib/rating.js'
 import { extractGrade, grade, gradeMatchups, gradeRun } from './lib/grade.js'
 import { getIntentOfMatchups } from './lib/intent.js'
 import { pathForRun } from './lib/utils.js'
@@ -54,11 +58,14 @@ async function createRun(
   type,
   prompt,
   exampleMessages = [],
-  settings = {}
+  settings = {},
+  compareWith = null,
+  compareModel = null
 ) {
   const users = await readData(numUsers)
 
   const path = `./data/runs/${type}/${name}`
+  const comparePath = `./data/runs/matchup/${compareWith}`
   fs.mkdirSync(path, { recursive: true })
   if (!fs.existsSync(`${path}/users.json`)) {
     fs.writeFileSync(`${path}/users.json`, JSON.stringify(users, null, 2))
@@ -98,9 +105,41 @@ async function createRun(
         JSON.stringify(matchups, null, 2)
       )
     }
+  } else if (type === 'compare') {
+    fs.cpSync(`${comparePath}/matchups.json`, `${path}/compareMatchups.json`)
+    const compareUsers = JSON.parse(
+      fs.readFileSync(`${comparePath}/users.json`, 'utf8')
+    )
+    if (!fs.existsSync(`${path}/compareUsers.json`)) {
+      fs.writeFileSync(
+        `${path}/compareUsers.json`,
+        JSON.stringify(compareUsers, null, 2)
+      )
+    }
+
+    let matchups = []
+    for (let i = 0; i < users.length; i++) {
+      for (let j = 0; j < compareUsers.length; j++) {
+        const user1 = users[i]
+        const user2 = compareUsers[j]
+        const text1User = Math.random() > 0.5 ? user1 : user2
+        const text2User = text1User === user1 ? user2 : user1
+        matchups.push({
+          id: uuid(),
+          text1: text1User.id,
+          text2: text2User.id,
+        })
+      }
+    }
+    if (!fs.existsSync(`${path}/matchups.json`)) {
+      fs.writeFileSync(
+        `${path}/matchups.json`,
+        JSON.stringify(matchups, null, 2)
+      )
+    }
   }
 
-  return { name, type, users, path }
+  return { name, type, users, path, comparePath, compareModel }
 }
 
 async function evaluateRun(run) {
@@ -147,6 +186,7 @@ async function evaluateRun(run) {
         user.textResponse = response.choices[0].message.content
         user.grade = extractGrade(response)
         user.error = Math.abs(user.avgGrade - user.grade)
+        user.compareError = Math.abs(user.grades[0] - user.grades[1])
       }
 
       const averageError =
@@ -154,6 +194,15 @@ async function evaluateRun(run) {
       const variance =
         users.reduce(
           (acc, curr) => acc + Math.pow(curr.error - averageError, 2),
+          0
+        ) / users.length
+
+      const averageCompareError =
+        users.reduce((acc, curr) => acc + curr.compareError, 0) / users.length
+      const varianceCompare =
+        users.reduce(
+          (acc, curr) =>
+            acc + Math.pow(curr.compareError - averageCompareError, 2),
           0
         ) / users.length
 
@@ -168,6 +217,8 @@ async function evaluateRun(run) {
         averageError:
           users.reduce((acc, curr) => acc + curr.error, 0) / users.length,
         variance,
+        averageCompareError,
+        varianceCompare,
       }
     }
   }
@@ -214,8 +265,13 @@ const fixErrors = async (run) => {
 }
 
 const runAndEvaluate = async (run, model, runs = 3) => {
-  if (run.type === 'matchup') {
+  if (run.type === 'matchup' || run.type === 'compare') {
     await gradeMatchups(run, model)
+    if (run.type === 'matchup') {
+      await getRatingsForMatchups(run, model)
+    } else {
+      await getRatingsForCompareMatchup(run, model)
+    }
   } else {
     for (let i = 0; i < runs; i++) {
       const modelRunName = `${model}_${i + 1}`
@@ -223,25 +279,27 @@ const runAndEvaluate = async (run, model, runs = 3) => {
     }
   }
 
-  await evaluateRun(run)
+  // await evaluateRun(run)
 }
 
 async function main() {
   const run = await createRun(
-    `run-with-25-users-swedish-instruction-temp-0.7`,
+    `compare-run-with-25-users-swedish-instruction-temp-0.7`,
     25,
-    'matchup',
+    'compare',
     `
 You are a teacher grading essays, you will be given two essays and your job is to decide which is better based on a grading criteria.
 ## Always end your response with which text you think is better, "decision: Text X".
 
   ${gradingInstructionSWEShorter}`,
     exampleMessages,
-    { temperature: 0.7 }
+    { temperature: 0.7 },
+    'run-with-150-users-swedish-instruction-temp-0.7',
+    'llama3-70b'
   )
 
-  await runAndEvaluate(run, 'random', 3)
-  await fixErrors(run)
+  await runAndEvaluate(run, 'compare-debugger', 3)
+  // await fixErrors(run)
 }
 
 main()

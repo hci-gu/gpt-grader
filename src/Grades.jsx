@@ -88,6 +88,8 @@ const Run = ({ run, onGradeClick }) => {
         <Table.Thead>
           <Table.Tr>
             <Table.Th>ID</Table.Th>
+            <Table.Th>Grade 1</Table.Th>
+            <Table.Th>Grade 2</Table.Th>
             <Table.Th>Grade</Table.Th>
             {models.map((model) => (
               <Table.Th key={model.name}>{model.name}</Table.Th>
@@ -98,6 +100,8 @@ const Run = ({ run, onGradeClick }) => {
           {users.map((user) => (
             <Table.Tr key={user.id}>
               <Table.Td>{user.id}</Table.Td>
+              <Table.Td>{user.grades[0]}</Table.Td>
+              <Table.Td>{user.grades[1]}</Table.Td>
               <Table.Td>{user.avgGrade}</Table.Td>
               {models.map((model) => {
                 if (!run.evaluation[model.name]) return <Table.Td>-</Table.Td>
